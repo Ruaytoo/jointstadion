@@ -36,7 +36,27 @@ This package also provides the KDS as a stand-alone [loss function](#kds-loss-fu
 
 Our implementation leverages efficient vectorization, auto-diff, 
 JIT compilation, and (multi-device) hardware acceleration 
-with [JAX](https://github.com/google/jax). 
+with [JAX](https://github.com/google/jax).
+
+## Stein-type KDS and joint learning (thesis extension)
+
+This fork additionally implements the **Stein-type KDS (SKDS)** of
+[Bleile et al. (2026)](https://arxiv.org/abs/2601.16597) 
+(`stadion/skds.py`, mirroring the `kds_loss` interface at a fraction of its
+computational cost) and the **joint multi-environment learning pipeline**
+of the thesis *"Joint learning from interventional data through one
+discrepancy"* (`stadion/joint.py`): a stratified per-environment U-statistic
+estimator of the joint SKDS with a shared mechanism, known intervention
+targets, ridge regularization, and a trace normalization removing the
+time-scale non-identifiability. For the linear (Ornstein–Uhlenbeck) model
+class the objective is an exact quadratic form, solved in closed form (KKT)
+or by the practical minibatch gradient pipeline `fit_joint`; the
+realizability formulas of Theorem 4.5 provide a moment-based estimator and
+closed-form stationary laws for evaluation. See `examples/joint_learning.py`
+for a minimal example, `experiments/joint/` for the simulation studies
+(mechanism recovery and held-out interventions; U-statistic vs. linear
+estimator; head-to-head against Algorithm 1 of Bleile et al./Lorch et al.),
+and `tests/` for the unit tests. 
 
 
 ## Quick Start

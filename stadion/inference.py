@@ -7,14 +7,13 @@ import numpy as onp
 import math
 
 import jax
-from jax import numpy as jnp, random, tree_map
-from jax.experimental import mesh_utils
-from jax.sharding import PositionalSharding
-from optax._src import linear_algebra
+from jax import numpy as jnp, random
+from jax.tree_util import tree_map
 import optax
 
 from stadion.sde import SDE
 from stadion.kds import kds_loss
+from stadion.skds import skds_loss
 from stadion.data import make_dataloader
 from stadion.utils import update_ave, retrieve_ave, tree_isnan
 
@@ -152,6 +151,7 @@ class KDSMixin(SDE, ABC):
         x,
         targets=None,
         bandwidth=5.0,
+        objective="kds",
         estimator="linear",
         learning_rate=0.003,
         steps=10000,
@@ -216,12 +216,9 @@ class KDSMixin(SDE, ABC):
         # convert x and targets into the same format
         x, targets, n_envs, self.n_vars = KDSMixin._format_input_data(x, targets)
 
-        # set up device sharding (currently only supports single device)
+        # set up device placement (currently only supports single device)
         if device is None:
-            device = jax.devices(device)[0]
-
-        mesh = mesh_utils.create_device_mesh((1,), [device])
-        sharding = PositionalSharding(mesh)
+            device = jax.devices()[0]
 
         # initialize parameters and load to device (replicate across devices)
         key, subk = random.split(key)
@@ -233,13 +230,18 @@ class KDSMixin(SDE, ABC):
 
         # init dataloader
         key, subk = random.split(key)
-        train_loader = make_dataloader(seed=subk[0].item(), sharding=sharding, x=x, batch_size=batch_size)
+        train_loader = make_dataloader(seed=subk[0].item(), device=device, x=x, batch_size=batch_size)
 
         # init kernel
         kernel = partial(rbf_kernel, bandwidth=bandwidth)
 
-        # init KDS loss
-        loss_fun = kds_loss(self.f, self.sigma, kernel, estimator=estimator)
+        # init KDS or Stein-type KDS loss
+        if objective == "kds":
+            loss_fun = kds_loss(self.f, self.sigma, kernel, estimator=estimator)
+        elif objective == "skds":
+            loss_fun = skds_loss(self.f, self.sigma, kernel, estimator=estimator)
+        else:
+            raise ValueError(f"Unknown objective `{objective}`. Options: `kds`, `skds`.")
 
         def objective_fun(param_tup, _, batch_):
             param_, intv_param_ = param_tup
@@ -294,8 +296,8 @@ class KDSMixin(SDE, ABC):
                                                       (param_update, intv_param_update))
 
             # logging
-            grad_norm = linear_algebra.global_norm(dparam)
-            intv_grad_norm = linear_algebra.global_norm(dintv_param)
+            grad_norm = optax.global_norm(dparam)
+            intv_grad_norm = optax.global_norm(dintv_param)
             nan_occurred_param = tree_isnan(dparam) | tree_isnan(param)
             nan_occurred_intv_param = tree_isnan(dintv_param) | tree_isnan(intv_param)
             aux = dict(loss=l,

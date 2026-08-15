@@ -1,0 +1,36 @@
+=== Experiment 1: recovery and held-out interventions ===
+seed 0 done
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+seed 6 done
+seed 7 done
+seed 8 done
+seed 9 done
+wrote /Users/zerocost/Study/Math/TUM/thesis/Lorch_KDS/stadion/experiments/joint/results/exp1_main.csv
+
+Main study (N=1000/env):
+method                         theta_err             shift_err              w2_train               w2_test                  time
+JSKDS (exact)            0.0415 ± 0.0053       0.0397 ± 0.0080       0.0761 ± 0.0097       0.1474 ± 0.0272    206.7593 ±377.7933
+JSKDS (adam)             0.0456 ± 0.0073       0.0409 ± 0.0083       0.0834 ± 0.0144       0.1479 ± 0.0241    744.0275 ±700.0421
+moments (Thm 4.5)        0.0321 ± 0.0058       0.0343 ± 0.0094       0.0982 ± 0.0226       0.1521 ± 0.0306       0.0004 ± 0.0002
+secondary seed 0 done
+secondary seed 1 done
+secondary seed 2 done
+secondary seed 3 done
+secondary seed 4 done
+secondary seed 5 done
+secondary seed 6 done
+secondary seed 7 done
+secondary seed 8 done
+secondary seed 9 done
+wrote /Users/zerocost/Study/Math/TUM/thesis/Lorch_KDS/stadion/experiments/joint/results/exp1_secondary.csv
+
+Secondary study (N=300/env):
+method                         theta_err             shift_err              w2_train               w2_test                  time
+JSKDS                    0.0887 ± 0.0148       0.0749 ± 0.0169       0.1499 ± 0.0206       0.2887 ± 0.0840       0.6896 ± 0.0241
+joint KDS                0.1202 ± 0.0167       0.0877 ± 0.0219       0.1788 ± 0.0290       0.4131 ± 0.2100    210.0230 ±392.2724
+pooled SKDS              0.1390 ± 0.0298       0.2704 ± 0.0855       0.4672 ± 0.1138       0.4352 ± 0.1003    105.6617 ±307.3058
+saved /Users/zerocost/Study/Math/TUM/thesis/Lorch_KDS/stadion/experiments/joint/results/exp1_recovery.png/.pdf

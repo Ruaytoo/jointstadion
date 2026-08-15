@@ -1,0 +1,18 @@
+seed 0 done
+seed 1 done
+seed 2 done
+seed 3 done
+seed 4 done
+seed 5 done
+seed 6 done
+seed 7 done
+seed 8 done
+seed 9 done
+wrote /Users/zerocost/Study/Math/TUM/thesis/Lorch_KDS/stadion/experiments/joint/results/exp7_paper_baseline.csv
+
+Joint JSKDS vs. Algorithm 1 baselines (d=5, 4 train + 1 held-out intervention, N=1000/env, 10 seeds):
+method                             theta_err             shift_err              w2_train               w2_test                  time
+JSKDS joint (thesis)         0.0415 ± 0.0053       0.0397 ± 0.0080       0.0761 ± 0.0097       0.1474 ± 0.0272           37.13 s    
+SKDS Alg. 1 (paper)          0.0634 ± 0.0110       0.0506 ± 0.0104       0.1127 ± 0.0181       0.2446 ± 0.1481            9.40 s    
+KDS Alg. 1 (Lorch)           0.0688 ± 0.0112       0.0517 ± 0.0097       0.1193 ± 0.0204       0.3005 ± 0.1692           10.59 s    
+saved /Users/zerocost/Study/Math/TUM/thesis/Lorch_KDS/stadion/experiments/joint/results/exp7_paper_baseline.png/.pdf

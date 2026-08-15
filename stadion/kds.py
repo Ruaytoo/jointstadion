@@ -1,7 +1,8 @@
 from functools import partial
 
 import jax
-from jax import vmap, tree_map
+from jax import vmap
+from jax.tree_util import tree_map
 import jax.numpy as jnp
 
 
@@ -9,6 +10,25 @@ def _wrapped_mean(func, axis=None):
     def wrapped(*args):
         return tree_map(partial(jnp.mean, axis=axis), func(*args))
     return wrapped
+
+
+def kds_pair_a(f, a_fn, kernel):
+
+    def _kernel(x, y, *args):
+        return kernel(x, y)
+
+    def generator(h, argnum):
+        def h_out(x, y, *args):
+            assert x.ndim == y.ndim == 1
+            assert x.shape == y.shape
+            z = x if argnum == 0 else y
+            f_x = f(z, *args)
+            a_x = a_fn(z, *args)
+            return f_x @ jax.grad(h, argnum)(x, y, *args) \
+                   + 0.5 * jnp.trace(a_x @ jax.hessian(h, argnum)(x, y, *args))
+        return h_out
+
+    return generator(generator(_kernel, 0), 1)
 
 
 def kds_loss(f, sigma, kernel, estimator="linear"):

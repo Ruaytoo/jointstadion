@@ -143,3 +143,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# thesis experiment outputs are tracked (exception to results/ above)
+!experiments/joint/results/
+!experiments/joint/results/**

@@ -17,6 +17,56 @@ __AUX_FIELDS__ = [
 ]
 
 
+class _AuxWrapper:
+    """
+    Hashable wrapper for pytree aux_data entries that may contain arrays.
+
+    JAX requires pytree metadata to be hashable with simple equality
+    semantics; raw (numpy/jax) arrays violate this and can break `jax.jit`
+    signature comparison. The wrapper compares nested containers of arrays
+    structurally and hashes them via their byte representation.
+    """
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    @staticmethod
+    def _eq(a, b):
+        import numpy as _onp
+        if type(a) != type(b) and not (hasattr(a, "shape") and hasattr(b, "shape")):
+            return a == b
+        if hasattr(a, "shape") or hasattr(b, "shape"):
+            try:
+                return bool(_onp.array_equal(_onp.asarray(a), _onp.asarray(b)))
+            except Exception:
+                return False
+        if isinstance(a, dict):
+            return a.keys() == b.keys() and all(_AuxWrapper._eq(a[k], b[k]) for k in a)
+        if isinstance(a, (tuple, list)):
+            return len(a) == len(b) and all(_AuxWrapper._eq(x, y) for x, y in zip(a, b))
+        return a == b
+
+    @staticmethod
+    def _key(x):
+        import numpy as _onp
+        if x is None or isinstance(x, (bool, int, float, str)):
+            return x
+        if hasattr(x, "shape"):
+            arr = _onp.asarray(x)
+            return (arr.shape, str(arr.dtype), arr.tobytes())
+        if isinstance(x, dict):
+            return tuple(sorted((k, _AuxWrapper._key(v)) for k, v in x.items()))
+        if isinstance(x, (tuple, list)):
+            return tuple(_AuxWrapper._key(v) for v in x)
+        return x
+
+    def __eq__(self, other):
+        return isinstance(other, _AuxWrapper) and _AuxWrapper._eq(self.obj, other.obj)
+
+    def __hash__(self):
+        return hash(_AuxWrapper._key(self.obj))
+
+
 class Parameters(ABC):
     def __init__(self, parameters):
         self._store = parameters
@@ -47,10 +97,10 @@ class Parameters(ABC):
             return leaf
 
         obj = copy.copy(self) # leaves the original object unchanged, no deepcopy because causes errors in tree_map
-        obj._store = jax.tree_map(index_fn, obj._store)
+        obj._store = jax.tree_util.tree_map(index_fn, obj._store)
         for elem in __AUX_FIELDS__:
             if hasattr(self, elem):
-                setattr(obj, elem, jax.tree_map(index_fn, getattr(self, elem)))
+                setattr(obj, elem, jax.tree_util.tree_map(index_fn, getattr(self, elem)))
         return obj
 
     @abstractmethod
@@ -64,19 +114,23 @@ class Parameters(ABC):
 
     def tree_flatten(self):
         vals, treedef = jax.tree_util.tree_flatten(self._store)
+        # aux_data must be hashable with simple equality; wrap array-valued fields
         aux_data = dict(treedef=treedef)
         for elem in __AUX_FIELDS__:
             if hasattr(self, elem):
-                aux_data[elem] = getattr(self, elem)
-        return vals, aux_data
+                aux_data[elem] = _AuxWrapper(getattr(self, elem))
+        # dicts are unhashable as aux_data; expose a hashable canonical form
+        aux_items = tuple(sorted(aux_data.items()))
+        return vals, aux_items
 
     @classmethod
-    def tree_unflatten(cls, aux_data, vals):
+    def tree_unflatten(cls, aux_items, vals):
+        aux_data = dict(aux_items)
         obj = object.__new__(cls)
         obj._store = jax.tree_util.tree_unflatten(aux_data["treedef"], vals)
         for elem in __AUX_FIELDS__:
             if elem in aux_data:
-                setattr(obj, elem, aux_data[elem])
+                setattr(obj, elem, aux_data[elem].obj)
         return obj
 
 
@@ -197,5 +251,5 @@ class InterventionParameters(Parameters):
             if not jax.tree_util.tree_structure(axes) == jax.tree_util.tree_structure(tree):
                 axes = jax.tree_util.tree_map(lambda _: axes, tree)
 
-            return jax.tree_map(masker, tree, targets, values, axes)
+            return jax.tree_util.tree_map(masker, tree, targets, values, axes)
 
